@@ -347,6 +347,29 @@ impl<'a, K, V> CowHashMap<'a, K, V>
 
         CowHashMap { inner: collection }
     }
+
+    /// An iterator visiting all key-value pairs in arbitrary order.
+    /// 
+    /// ```rust
+    /// # #[macro_use] extern crate hashcow; fn main() {
+    /// # use std::collections::HashSet;
+    /// use hashcow::CowHashMap;
+    /// 
+    /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
+    /// let v1 = &[1, 2, 3];
+    /// let v2 = &[4, 5, 6];
+    /// hm.insert_borrowed("key1", v1);
+    /// hm.insert_owned("key2".to_owned(), vec![4, 5, 6]);
+    /// 
+    /// for (key, val) in hm.iter() {
+    ///     // ...
+    /// }
+    /// # }
+    /// ```
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
+        self.inner.iter().map(|(k, v)| (k.borrow(), v.borrow()))
+    }
 }
 
 #[macro_use]
