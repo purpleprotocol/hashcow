@@ -1,7 +1,7 @@
 // Copyright 2019 Octavian Oncescu
 
 use hashbrown::HashMap;
-use std::borrow::{Cow, ToOwned};
+use std::borrow::{Borrow, Cow, ToOwned};
 use std::hash::Hash;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -14,14 +14,14 @@ pub enum EntryForm {
 }
 
 pub struct CowHashMap<'a, K, V> 
-    where K: Hash + Sized + PartialEq + Eq,
+    where K: Hash + Sized + PartialEq + Eq + Clone,
           V: ToOwned + ?Sized,
 {
     inner: HashMap<K, Cow<'a, V>>
 }
 
 impl<'a, K, V> CowHashMap<'a, K, V> 
-    where K: Hash + Sized + PartialEq + Eq,
+    where K: Hash + Sized + PartialEq + Eq + Clone,
           V: ToOwned + ?Sized,
 {
     /// Creates a new `CowHashMap`.
@@ -205,28 +205,44 @@ impl<'a, K, V> CowHashMap<'a, K, V>
             Cow::Owned(_) => Some(EntryForm::Owned),
         }
     }
-}
 
-impl<'a, K, V> ToOwned for CowHashMap<'a, K, V> 
-    where K: Hash + Sized + PartialEq + Eq,
-          V: ToOwned + ?Sized,
-{
-    type Owned = Self;
-
+    /// Returns a cloned version of the map but with
+    /// the entries in borrowed form.
+    /// 
+    /// ```rust
+    /// use hashcow::{EntryForm, CowHashMap};
+    /// 
+    /// let mut hm: CowHashMap<&str, [u8]> = CowHashMap::new();
+    /// hm.insert_owned("key", vec![1, 2, 3]);
+    /// 
+    /// assert_eq!(hm.entry_form(&"key").unwrap(), EntryForm::Owned);
+    /// 
+    /// let hm_clone = hm.borrow_fields();
+    /// assert_eq!(hm_clone.entry_form(&"key").unwrap(), EntryForm::Borrowed);
+    /// ```
     #[inline]
-    fn to_owned(&self) -> Self::Owned {
-        unimplemented!();
-    } 
+    pub fn borrow_fields(&'a self) -> Self {
+        let collection: HashMap<K, Cow<'a, V>> = self.inner
+            .iter()
+            .map(|(k, v)| {
+                match v {
+                    Cow::Owned(val) => {
+                        (k.clone(), Cow::Borrowed((*val).borrow()))
+                    }
+
+                    Cow::Borrowed(val) => {
+                        (k.clone(), Cow::Borrowed(*val))
+                    }
+                }
+                
+            })
+            .collect();
+
+        CowHashMap { inner: collection }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // #[test]
-    // fn it_clones_data_lazily() {
-    //     let hm = CowHashMap::new();
-
-    //     hm.insert("key", )
-    // }
 }
