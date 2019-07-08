@@ -1,7 +1,7 @@
 # HashCow
 [![Build Status]][travis] [![Discord Badge]][Discord] [![Latest Version]][crates.io] [![Documentation]][docs.rs] 
 
-HashCow is a HashMap implementation with copy-on-write keys and values.
+HashCow is a Rust HashMap implementation with copy-on-write keys and values.
 
 ---
 

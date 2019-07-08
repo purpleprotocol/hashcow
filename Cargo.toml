@@ -3,6 +3,12 @@ name = "hashcow"
 version = "0.1.0"
 authors = ["Octavian Oncescu <octavonce@gmail.com>"]
 edition = "2018"
+repository = "https://github.com/purpleprotocol/hashcow"
+keywords = ["cow", "hashmap"]
+categories = ["data-structures"]
+description = "A Rust HashMap implementation with copy-on-write keys and values"
+license = "MIT"
+readme = "README.md"
 
 [dependencies]
 hashbrown = { version = "0.1.8", features = ["rayon"] }
