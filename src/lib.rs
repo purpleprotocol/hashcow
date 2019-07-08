@@ -14,22 +14,23 @@ pub enum EntryForm {
 }
 
 pub struct CowHashMap<'a, K, V> 
-    where K: Hash + Sized + PartialEq + Eq + Clone + ToOwned,
+    where K: Hash + ?Sized + PartialEq + Eq + ToOwned,
           V: ToOwned + ?Sized,
 {
     inner: HashMap<Cow<'a, K>, Cow<'a, V>>
 }
 
 impl<'a, K, V> CowHashMap<'a, K, V> 
-    where K: Hash + Sized + PartialEq + Eq + Clone,
+    where K: Hash + ?Sized + PartialEq + Eq + ToOwned,
           V: ToOwned + ?Sized,
 {
     /// Creates a new `CowHashMap`.
     /// 
+    /// ## Example
     /// ```rust
     /// use hashcow::CowHashMap;
     /// 
-    /// let hm: CowHashMap<&str, String> = CowHashMap::new();
+    /// let hm: CowHashMap<str, String> = CowHashMap::new();
     /// ```
     #[inline]
     pub fn new() -> Self {
@@ -40,10 +41,11 @@ impl<'a, K, V> CowHashMap<'a, K, V>
 
     /// Creates a new `CowHashMap` with the specified capacity.
     /// 
+    /// ## Example
     /// ```rust
     /// use hashcow::CowHashMap;
     /// 
-    /// let hm: CowHashMap<&str, String> = CowHashMap::with_capacity(5);
+    /// let hm: CowHashMap<str, String> = CowHashMap::with_capacity(5);
     /// assert!(hm.capacity() >= 5);
     /// ```
     #[inline]
@@ -57,10 +59,11 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     /// 
     /// This number is a lower bound; the map might be able to hold more elements, but is guaranteed to be able to hold at least this many elements.
     /// 
+    /// ## Example
     /// ```rust
     /// use hashcow::CowHashMap;
     /// 
-    /// let hm: CowHashMap<&str, [u8]> = CowHashMap::new();
+    /// let hm: CowHashMap<str, [u8]> = CowHashMap::new();
     /// assert_eq!(hm.capacity(), 0);
     /// ```
     #[inline]
@@ -83,16 +86,17 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     /// function returns the previous value. If the previous value
     /// is borrowed, it will be cloned and then returned.
     /// 
+    /// ## Example
     /// ```rust
     /// use hashcow::CowHashMap;
     /// 
-    /// let mut hm: CowHashMap<&str, [u8]> = CowHashMap::new();
-    /// hm.insert_owned("key", vec![1, 2, 3]);
+    /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
+    /// hm.insert_owned("key".to_owned(), vec![1, 2, 3]);
     ///
     /// assert_eq!(hm.len(), 1);
     /// ```
     #[inline]
-    pub fn insert_owned(&mut self, key: K, value: <V as ToOwned>::Owned) -> Option<<V as ToOwned>::Owned> {
+    pub fn insert_owned(&mut self, key: <K as ToOwned>::Owned, value: <V as ToOwned>::Owned) -> Option<<V as ToOwned>::Owned> {
         self.inner.insert(Cow::Owned(key), Cow::Owned(value)).map(|x| x.into_owned())
     }
 
@@ -104,27 +108,29 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     /// function returns the previous value. If the previous value
     /// is borrowed, it will be cloned and then returned.
     /// 
+    /// ## Example
     /// ```rust
     /// use hashcow::CowHashMap;
     /// 
-    /// let mut hm: CowHashMap<&str, [u8]> = CowHashMap::new();
+    /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
     /// hm.insert_borrowed("key", &[1, 2, 3]);
     ///
     /// assert_eq!(hm.len(), 1);
     /// ```
     #[inline]
-    pub fn insert_borrowed(&mut self, key: K, value: &'a V) -> Option<<V as ToOwned>::Owned> {
-        self.inner.insert(Cow::Owned(key), Cow::Borrowed(value)).map(|x| x.into_owned())
+    pub fn insert_borrowed(&mut self, key: &'a K, value: &'a V) -> Option<<V as ToOwned>::Owned> {
+        self.inner.insert(Cow::Borrowed(key), Cow::Borrowed(value)).map(|x| x.into_owned())
     }
 
     /// Attempts to retrieve a reference to an item stored in the map.
     /// 
+    /// ## Example
     /// ```rust
     /// use hashcow::CowHashMap;
     /// 
-    /// let mut hm: CowHashMap<&str, [u8]> = CowHashMap::new();
+    /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
     /// hm.insert_borrowed("key1", &[1, 2, 3]);
-    /// hm.insert_owned("key2", vec![4, 5, 6]);
+    /// hm.insert_owned("key2".to_owned(), vec![4, 5, 6]);
     ///
     /// assert_eq!(hm.len(), 2);
     /// assert_eq!(hm.get(&"key1").unwrap(), &[1, 2, 3]);
@@ -141,10 +147,11 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     /// If the stored entry is in the borrowed form, this function
     /// will clone the underlying data.
     /// 
+    /// ## Example
     /// ```rust
     /// use hashcow::{EntryForm, CowHashMap};
     /// 
-    /// let mut hm: CowHashMap<&str, [u8]> = CowHashMap::new();
+    /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
     /// hm.insert_borrowed("key1", &[1, 2, 3]);
     /// 
     /// assert_eq!(hm.entry_form(&"key1").unwrap(), EntryForm::Borrowed);
@@ -163,6 +170,28 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     #[inline]
     pub fn get_mut(&mut self, key: &K) -> Option<&mut <V as ToOwned>::Owned> {
         self.inner.get_mut(key).map(|v| v.to_mut())
+    }
+
+    #[inline]
+    /// Returns an iterator over the keys of the map.
+    /// 
+    /// ## Example
+    /// ```rust
+    /// # #[macro_use] extern crate hashcow; fn main() {
+    /// # use std::collections::HashSet;
+    /// use hashcow::CowHashMap;
+    /// 
+    /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
+    /// hm.insert_borrowed("key1", &[1, 2, 3]);
+    /// hm.insert_owned("key2".to_owned(), vec![4, 5, 6]);
+    /// 
+    /// let keys: HashSet<&str> = hm.keys().collect();
+    /// assert_eq!(keys, set!["key1", "key2"]);
+    /// # }
+    /// ```
+    #[inline]
+    pub fn keys(&self) -> impl Iterator<Item = &K> {
+        self.inner.keys().map(|k| k.borrow())
     }
 
     /// Makes a specific value in the map owned, if it isn't so already.
@@ -209,11 +238,12 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     /// Returns a cloned version of the map but with
     /// the entries in borrowed form.
     /// 
+    /// ## Example
     /// ```rust
     /// use hashcow::{EntryForm, CowHashMap};
     /// 
-    /// let mut hm: CowHashMap<&str, [u8]> = CowHashMap::new();
-    /// hm.insert_owned("key", vec![1, 2, 3]);
+    /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
+    /// hm.insert_owned("key".to_owned(), vec![1, 2, 3]);
     /// 
     /// assert_eq!(hm.entry_form(&"key").unwrap(), EntryForm::Owned);
     /// 
@@ -249,6 +279,9 @@ impl<'a, K, V> CowHashMap<'a, K, V>
         CowHashMap { inner: collection }
     }
 }
+
+#[macro_use]
+mod macros;
 
 #[cfg(test)]
 mod tests {
