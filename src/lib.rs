@@ -5,7 +5,9 @@ use std::borrow::{Borrow, Cow, ToOwned};
 use std::hash::Hash;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum EntryForm {
+/// The form of the entry in the map. Can be either
+/// `Borrowed` or `Owned`.
+pub enum Form {
     /// The map entry is borrowed.
     Borrowed,
 
@@ -100,6 +102,28 @@ impl<'a, K, V> CowHashMap<'a, K, V>
         self.inner.insert(Cow::Owned(key), Cow::Owned(value)).map(|x| x.into_owned())
     }
 
+    /// Inserts a new key/value pair into the map with the value
+    /// being in the owned form and the key in borrowed form.
+    /// 
+    /// This function returns `None` if there was no value previously 
+    /// associated with the given key. If the key is replaced, this
+    /// function returns the previous value. If the previous value
+    /// is borrowed, it will be cloned and then returned.
+    /// 
+    /// ## Example
+    /// ```rust
+    /// use hashcow::CowHashMap;
+    /// 
+    /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
+    /// hm.insert_owned_borrowed_key("key", vec![1, 2, 3]);
+    ///
+    /// assert_eq!(hm.len(), 1);
+    /// ```
+    #[inline]
+    pub fn insert_owned_borrowed_key(&mut self, key: &'a K, value: <V as ToOwned>::Owned) -> Option<<V as ToOwned>::Owned> {
+        self.inner.insert(Cow::Borrowed(key), Cow::Owned(value)).map(|x| x.into_owned())
+    }
+
     /// Inserts a new key/value pair in to the map with the value
     /// being in borrowed form.
     /// 
@@ -120,6 +144,28 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     #[inline]
     pub fn insert_borrowed(&mut self, key: &'a K, value: &'a V) -> Option<<V as ToOwned>::Owned> {
         self.inner.insert(Cow::Borrowed(key), Cow::Borrowed(value)).map(|x| x.into_owned())
+    }
+
+    /// Inserts a new key/value pair in to the map with the value
+    /// being in borrowed form and the key in owned form.
+    /// 
+    /// This function returns `None` if there was no value previously 
+    /// associated with the given key. If the key is replaced, this
+    /// function returns the previous value. If the previous value
+    /// is borrowed, it will be cloned and then returned.
+    /// 
+    /// ## Example
+    /// ```rust
+    /// use hashcow::CowHashMap;
+    /// 
+    /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
+    /// hm.insert_borrowed_owned_key("key".to_owned(), &[1, 2, 3]);
+    ///
+    /// assert_eq!(hm.len(), 1);
+    /// ```
+    #[inline]
+    pub fn insert_borrowed_owned_key(&mut self, key: <K as ToOwned>::Owned, value: &'a V) -> Option<<V as ToOwned>::Owned> {
+        self.inner.insert(Cow::Owned(key), Cow::Borrowed(value)).map(|x| x.into_owned())
     }
 
     /// Attempts to retrieve a reference to an item stored in the map.
@@ -149,12 +195,12 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     /// 
     /// ## Example
     /// ```rust
-    /// use hashcow::{EntryForm, CowHashMap};
+    /// use hashcow::{Form, CowHashMap};
     /// 
     /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
     /// hm.insert_borrowed("key1", &[1, 2, 3]);
     /// 
-    /// assert_eq!(hm.entry_form(&"key1").unwrap(), EntryForm::Borrowed);
+    /// assert_eq!(hm.entry_form(&"key1").unwrap(), Form::Borrowed);
     /// 
     /// {
     ///     // This will clone the entry stored at this key
@@ -164,7 +210,7 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     ///     *entry = vec![4, 5, 6];
     /// }
     ///
-    /// assert_eq!(hm.entry_form(&"key1").unwrap(), EntryForm::Owned);
+    /// assert_eq!(hm.entry_form(&"key1").unwrap(), Form::Owned);
     /// assert_eq!(hm.get(&"key1").unwrap(), &[4, 5, 6]);
     /// ```
     #[inline]
@@ -224,14 +270,14 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     /// returns the underlying form in which it is stored in 
     /// the map.
     /// 
-    /// Can be either `EntryForm::Borrowed` or `EntryForm::Owned`.
+    /// Can be either `Form::Borrowed` or `Form::Owned`.
     #[inline]
-    pub fn entry_form(&self, key: &K) -> Option<EntryForm> {
+    pub fn entry_form(&self, key: &K) -> Option<Form> {
         let val = self.inner.get(key)?;
 
         match val {
-            Cow::Borrowed(_) => Some(EntryForm::Borrowed),
-            Cow::Owned(_) => Some(EntryForm::Owned),
+            Cow::Borrowed(_) => Some(Form::Borrowed),
+            Cow::Owned(_) => Some(Form::Owned),
         }
     }
 
@@ -240,15 +286,15 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     /// 
     /// ## Example
     /// ```rust
-    /// use hashcow::{EntryForm, CowHashMap};
+    /// use hashcow::{Form, CowHashMap};
     /// 
     /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
     /// hm.insert_owned("key".to_owned(), vec![1, 2, 3]);
     /// 
-    /// assert_eq!(hm.entry_form(&"key").unwrap(), EntryForm::Owned);
+    /// assert_eq!(hm.entry_form(&"key").unwrap(), Form::Owned);
     /// 
     /// let hm_clone = hm.borrow_fields();
-    /// assert_eq!(hm_clone.entry_form(&"key").unwrap(), EntryForm::Borrowed);
+    /// assert_eq!(hm_clone.entry_form(&"key").unwrap(), Form::Borrowed);
     /// ```
     #[inline]
     pub fn borrow_fields(&'a self) -> Self {
