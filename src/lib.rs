@@ -14,10 +14,10 @@ pub enum EntryForm {
 }
 
 pub struct CowHashMap<'a, K, V> 
-    where K: Hash + Sized + PartialEq + Eq + Clone,
+    where K: Hash + Sized + PartialEq + Eq + Clone + ToOwned,
           V: ToOwned + ?Sized,
 {
-    inner: HashMap<K, Cow<'a, V>>
+    inner: HashMap<Cow<'a, K>, Cow<'a, V>>
 }
 
 impl<'a, K, V> CowHashMap<'a, K, V> 
@@ -93,7 +93,7 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     /// ```
     #[inline]
     pub fn insert_owned(&mut self, key: K, value: <V as ToOwned>::Owned) -> Option<<V as ToOwned>::Owned> {
-        self.inner.insert(key, Cow::Owned(value)).map(|x| x.into_owned())
+        self.inner.insert(Cow::Owned(key), Cow::Owned(value)).map(|x| x.into_owned())
     }
 
     /// Inserts a new key/value pair in to the map with the value
@@ -114,7 +114,7 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     /// ```
     #[inline]
     pub fn insert_borrowed(&mut self, key: K, value: &'a V) -> Option<<V as ToOwned>::Owned> {
-        self.inner.insert(key, Cow::Borrowed(value)).map(|x| x.into_owned())
+        self.inner.insert(Cow::Owned(key), Cow::Borrowed(value)).map(|x| x.into_owned())
     }
 
     /// Attempts to retrieve a reference to an item stored in the map.
@@ -222,16 +222,24 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     /// ```
     #[inline]
     pub fn borrow_fields(&'a self) -> Self {
-        let collection: HashMap<K, Cow<'a, V>> = self.inner
+        let collection: HashMap<Cow<'a, K>, Cow<'a, V>> = self.inner
             .iter()
             .map(|(k, v)| {
-                match v {
-                    Cow::Owned(val) => {
-                        (k.clone(), Cow::Borrowed((*val).borrow()))
+                match (k, v) {
+                    (Cow::Owned(key), Cow::Owned(val)) => {
+                        (Cow::Borrowed((*key).borrow()), Cow::Borrowed((*val).borrow()))
                     }
 
-                    Cow::Borrowed(val) => {
-                        (k.clone(), Cow::Borrowed(*val))
+                    (Cow::Borrowed(key), Cow::Owned(val)) => {
+                        (Cow::Borrowed(*key), Cow::Borrowed((*val).borrow()))
+                    }
+
+                    (Cow::Owned(key), Cow::Borrowed(val)) => {
+                        (Cow::Borrowed((*key).borrow()), Cow::Borrowed(*val))
+                    }
+
+                    (Cow::Borrowed(key), Cow::Borrowed(val)) => {
+                        (Cow::Borrowed(*key), Cow::Borrowed(*val))
                     }
                 }
                 
