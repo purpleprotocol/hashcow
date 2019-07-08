@@ -1,5 +1,5 @@
 [package]
-name = "cow_hashmap"
+name = "hashcow"
 version = "0.1.0"
 authors = ["Octavian Oncescu <octavian.oncescu@gmail.com>"]
 edition = "2018"
