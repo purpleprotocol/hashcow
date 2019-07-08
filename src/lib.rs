@@ -128,6 +128,12 @@ impl<'a, K, V> CowHashMap<'a, K, V>
         self.inner.shrink_to_fit();
     }
 
+    /// Clears the map, removing all key-value pairs. Keeps the allocated memory for reuse.
+    #[inline]
+    pub fn clear(&mut self) {
+        self.inner.clear();
+    }
+
     /// Returns true if the map contains no elements.
     ///
     /// ## Example
