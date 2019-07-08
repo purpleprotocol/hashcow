@@ -80,6 +80,29 @@ impl<'a, K, V> CowHashMap<'a, K, V>
         self.inner.reserve(additional);
     }
 
+    /// Shrinks the map as much as possible while retaining the number of elements.
+    #[inline]
+    pub fn shrink_to_fit(&mut self) {
+        self.inner.shrink_to_fit();
+    }
+
+    /// Returns true if the map contains no elements.
+    ///
+    /// ## Example
+    /// ```rust
+    /// use hashcow::CowHashMap;
+    /// 
+    /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
+    /// assert!(hm.is_empty());
+    /// 
+    /// hm.insert_owned("key".to_owned(), vec![1, 2, 3]);
+    /// assert!(!hm.is_empty());
+    /// ```
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Inserts a new key/value pair into the map with the value
     /// being in the owned form.
     /// 
