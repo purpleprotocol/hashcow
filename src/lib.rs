@@ -398,15 +398,14 @@ impl<'a, K, V> CowHashMap<'a, K, V>
 
     /// An iterator visiting all key-value pairs in arbitrary order.
     /// 
+    /// ## Example
     /// ```rust
     /// # #[macro_use] extern crate hashcow; fn main() {
     /// # use std::collections::HashSet;
     /// use hashcow::CowHashMap;
     /// 
     /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
-    /// let v1 = &[1, 2, 3];
-    /// let v2 = &[4, 5, 6];
-    /// hm.insert_borrowed("key1", v1);
+    /// hm.insert_borrowed("key1", &[1, 2, 3]);
     /// hm.insert_owned("key2".to_owned(), vec![4, 5, 6]);
     /// 
     /// for (key, val) in hm.iter() {
@@ -417,6 +416,27 @@ impl<'a, K, V> CowHashMap<'a, K, V>
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
         self.inner.iter().map(|(k, v)| (k.borrow(), v.borrow()))
+    }
+
+    /// Removes a key from the map, returning the value at the key if the key was previously in the map.
+    /// 
+    /// ## Example
+    /// ```rust
+    /// use hashcow::CowHashMap;
+    /// 
+    /// let mut hm: CowHashMap<str, [u8]> = CowHashMap::new();
+    /// assert!(hm.remove(&"key1").is_none());
+    /// 
+    /// hm.insert_borrowed("key1", &[1, 2, 3]);
+    /// assert_eq!(hm.remove(&"key1").unwrap(), vec![1, 2, 3]);
+    /// ```
+    pub fn remove(&mut self, key: &K) -> Option<<V as ToOwned>::Owned> {
+        let val = self.inner.remove(key)?;
+
+        match val {
+            Cow::Borrowed(val) => Some(val.to_owned()),
+            Cow::Owned(val) => Some(val),
+        }
     }
 }
 
