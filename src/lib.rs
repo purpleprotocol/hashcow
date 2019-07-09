@@ -57,6 +57,7 @@ pub enum Form {
     Owned,
 }
 
+/// A HashMap data-structure with copy-on-write keys and values.
 pub struct CowHashMap<'a, K, V> 
     where K: Hash + ?Sized + PartialEq + Eq + ToOwned,
           V: ToOwned + ?Sized,
